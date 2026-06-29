@@ -44,6 +44,15 @@ function stripHtml(html) {
     .replace(/\s+/g, ' ').trim();
 }
 
+function truncate(text, limit) {
+  if (text.length <= limit) return text;
+  const slice = text.slice(0, limit);
+  const lastSentence = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('! '), slice.lastIndexOf('? '));
+  if (lastSentence > limit * 0.5) return slice.slice(0, lastSentence + 1);
+  const lastSpace = slice.lastIndexOf(' ');
+  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice) + '…';
+}
+
 function detectTags(title, description) {
   const text = `${title} ${description}`.toLowerCase();
   const tags = [];
@@ -130,8 +139,8 @@ async function ingestFeed(db, feedConfig) {
       const fullText = stripHtml(
         item.contentEncoded || item['content:encoded'] || item.contentSnippet || item.summary || item.content || ''
       );
-      const description = fullText.slice(0, 600);
-      const content = fullText.slice(0, 3000);
+      const description = truncate(fullText, 600);
+      const content = truncate(fullText, 3000);
       const author = item.creator || item.author || '';
       const link = item.link || item.guid || '';
       const guid = item.guid || item.id || item.link || title;

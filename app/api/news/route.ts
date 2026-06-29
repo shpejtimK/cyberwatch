@@ -65,6 +65,15 @@ function stripHtml(html: string): string {
     .replace(/&#\d+;/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function truncate(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const slice = text.slice(0, limit);
+  const lastSentence = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('! '), slice.lastIndexOf('? '));
+  if (lastSentence > limit * 0.5) return slice.slice(0, lastSentence + 1);
+  const lastSpace = slice.lastIndexOf(' ');
+  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice) + '…';
+}
+
 function detectTags(title: string, description: string): string[] {
   const text = `${title} ${description}`.toLowerCase();
   const tags: string[] = [];
@@ -172,8 +181,8 @@ async function refreshDatabase(): Promise<void> {
         (item as Record<string, unknown>)['contentEncoded'] as string ||
         item.contentSnippet || item.summary || item.content || ''
       );
-      const description = fullText.slice(0, 600);
-      const content = fullText.slice(0, 3000);
+      const description = truncate(fullText, 600);
+      const content = truncate(fullText, 3000);
       const link = item.link || '';
       const guid = item.guid || item.link || title;
       const pubDate = item.pubDate || item.isoDate || new Date().toISOString();

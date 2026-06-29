@@ -7,6 +7,7 @@ interface NewsItem {
   title: string;
   link: string;
   description: string;
+  content: string;
   pubDate: string;
   source: string;
   tags: string[];
@@ -142,9 +143,6 @@ export default function BriefSec() {
   const [timeFilter, setTimeFilter] = useState<'all' | '24h'>('all');
   const [savedArticles, setSavedArticles] = useState<Map<string, NewsItem>>(new Map());
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
-  const [modalSummary, setModalSummary] = useState<string | null>(null);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
 
   // Load persisted preferences from localStorage
   useEffect(() => {
@@ -205,17 +203,6 @@ export default function BriefSec() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  useEffect(() => {
-    if (!selectedArticle) { setModalSummary(null); setModalError(null); return; }
-    setModalLoading(true);
-    setModalSummary(null);
-    setModalError(null);
-    fetch(`/api/summarize?url=${encodeURIComponent(selectedArticle.link)}`)
-      .then(r => r.json())
-      .then(d => { if (d.error) throw new Error(d.error); setModalSummary(d.summary); })
-      .catch(e => setModalError(e.message))
-      .finally(() => setModalLoading(false));
-  }, [selectedArticle]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -547,22 +534,11 @@ export default function BriefSec() {
                 </div>
               )}
 
-              <div className="modal-body">
-                {modalLoading && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-muted)' }}>
-                    <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-                    Generating AI summary…
-                  </div>
-                )}
-                {modalError && (
-                  <span style={{ color: 'var(--red)', fontSize: '13px' }}>
-                    Could not generate summary. {modalError}
-                  </span>
-                )}
-                {modalSummary && (
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{modalSummary}</div>
-                )}
-              </div>
+              {(item.content || item.description) && (
+                <div className="modal-body">
+                  <p style={{ margin: 0, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{item.content || item.description}</p>
+                </div>
+              )}
 
               {item.tags.length > 0 && (
                 <div className="modal-tags">

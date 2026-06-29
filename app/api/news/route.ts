@@ -11,6 +11,7 @@ interface NewsItem {
   title: string;
   link: string;
   description: string;
+  content: string;
   pubDate: string;
   source: string;
   tags: string[];
@@ -104,6 +105,7 @@ function openDb() {
         title TEXT NOT NULL,
         link TEXT NOT NULL,
         description TEXT DEFAULT '',
+        content TEXT DEFAULT '',
         author TEXT DEFAULT '',
         pub_date TEXT,
         published_at INTEGER,
@@ -121,6 +123,7 @@ function openDb() {
       CREATE INDEX IF NOT EXISTS idx_pub ON articles(published_at DESC);
       CREATE INDEX IF NOT EXISTS idx_hash ON articles(content_hash);
     `);
+    try { db.exec(`ALTER TABLE articles ADD COLUMN content TEXT DEFAULT ''`); } catch { /* already exists */ }
     return db;
   } catch {
     return null;
@@ -148,11 +151,12 @@ async function refreshDatabase(): Promise<void> {
   );
 
   const upsert = db.prepare(`
-    INSERT INTO articles (guid, source, title, link, description, author, pub_date, published_at, tags, cves, content_hash)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO articles (guid, source, title, link, description, content, author, pub_date, published_at, tags, cves, content_hash)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(source, guid) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
+      content = excluded.content,
       tags = excluded.tags,
       cves = excluded.cves,
       created_at = strftime('%s', 'now')
@@ -164,10 +168,12 @@ async function refreshDatabase(): Promise<void> {
     for (const item of items.slice(0, 30)) {
       const title = stripHtml(item.title || '');
       if (!title) continue;
-      const description = stripHtml(
+      const fullText = stripHtml(
         (item as Record<string, unknown>)['contentEncoded'] as string ||
         item.contentSnippet || item.summary || item.content || ''
-      ).slice(0, 600);
+      );
+      const description = fullText.slice(0, 600);
+      const content = fullText.slice(0, 3000);
       const link = item.link || '';
       const guid = item.guid || item.link || title;
       const pubDate = item.pubDate || item.isoDate || new Date().toISOString();
@@ -180,7 +186,7 @@ async function refreshDatabase(): Promise<void> {
       if (checkDup.get(contentHash, feedName)) continue;
 
       try {
-        upsert.run(guid, feedName, title, link, description,
+        upsert.run(guid, feedName, title, link, description, content,
           (item as Record<string, unknown>)['creator'] as string || (item as Record<string, unknown>)['author'] as string || '',
           pubDate, publishedAt, JSON.stringify(tags), JSON.stringify(cves), contentHash);
       } catch { /* skip */ }
@@ -205,12 +211,12 @@ function readFromDb(): NewsItem[] | null {
   if (!db) return null;
   try {
     const rows = db.prepare(`
-      SELECT guid, source, title, link, description, author, pub_date, tags, cves
+      SELECT guid, source, title, link, description, content, author, pub_date, tags, cves
       FROM articles WHERE is_duplicate = 0
       ORDER BY published_at DESC LIMIT 300
     `).all() as Array<{
       guid: string; source: string; title: string; link: string;
-      description: string; author: string; pub_date: string;
+      description: string; content: string; author: string; pub_date: string;
       tags: string; cves: string;
     }>;
     db.close();
@@ -220,6 +226,7 @@ function readFromDb(): NewsItem[] | null {
       title: r.title,
       link: r.link,
       description: r.description,
+      content: r.content || r.description,
       pubDate: r.pub_date,
       source: r.source,
       tags: JSON.parse(r.tags || '[]'),

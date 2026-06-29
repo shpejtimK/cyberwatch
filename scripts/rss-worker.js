@@ -82,6 +82,7 @@ function openDatabase() {
       title TEXT NOT NULL,
       link TEXT NOT NULL,
       description TEXT DEFAULT '',
+      content TEXT DEFAULT '',
       author TEXT DEFAULT '',
       pub_date TEXT,
       published_at INTEGER,
@@ -95,6 +96,7 @@ function openDatabase() {
     CREATE INDEX IF NOT EXISTS idx_pub ON articles(published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_hash ON articles(content_hash);
   `);
+  try { db.exec(`ALTER TABLE articles ADD COLUMN content TEXT DEFAULT ''`); } catch { /* column already exists */ }
   return db;
 }
 
@@ -109,11 +111,12 @@ async function ingestFeed(db, feedConfig) {
   }
 
   const upsert = db.prepare(`
-    INSERT INTO articles (guid, source, title, link, description, author, pub_date, published_at, tags, cves, content_hash)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO articles (guid, source, title, link, description, content, author, pub_date, published_at, tags, cves, content_hash)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(source, guid) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
+      content = excluded.content,
       tags = excluded.tags,
       cves = excluded.cves
   `);
@@ -124,9 +127,11 @@ async function ingestFeed(db, feedConfig) {
   const insertMany = db.transaction((items) => {
     for (const item of items) {
       const title = stripHtml(item.title || '');
-      const description = stripHtml(
-        item.contentSnippet || item.summary || item['content:encoded'] || item.contentEncoded || item.content || ''
-      ).slice(0, 600);
+      const fullText = stripHtml(
+        item.contentEncoded || item['content:encoded'] || item.contentSnippet || item.summary || item.content || ''
+      );
+      const description = fullText.slice(0, 600);
+      const content = fullText.slice(0, 3000);
       const author = item.creator || item.author || '';
       const link = item.link || item.guid || '';
       const guid = item.guid || item.id || item.link || title;
@@ -143,7 +148,7 @@ async function ingestFeed(db, feedConfig) {
       if (dup) return;
 
       try {
-        upsert.run(guid, name, title, link, description, author, pubDate, publishedAt,
+        upsert.run(guid, name, title, link, description, content, author, pubDate, publishedAt,
           JSON.stringify(tags), JSON.stringify(cves), contentHash);
         count++;
       } catch {

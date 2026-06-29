@@ -4,6 +4,12 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'CyberWatch — Security Intelligence Feed',
   description: 'Real-time cybersecurity news aggregator for security analysts',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/icon.svg',
+  },
 };
 
 export const viewport: Viewport = {

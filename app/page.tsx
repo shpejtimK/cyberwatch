@@ -22,7 +22,6 @@ interface FeedData {
   lastRefresh: string | null;
 }
 
-// ── Source colors ──────────────────────────────────────────
 const SOURCE_STYLES: Record<string, { bg: string; color: string; accent: string }> = {
   'Krebs on Security':     { bg: '#2d1206', color: '#fb923c', accent: '#ea580c' },
   'The Hacker News':       { bg: '#2d0a0a', color: '#f87171', accent: '#dc2626' },
@@ -38,11 +37,6 @@ const SOURCE_STYLES: Record<string, { bg: string; color: string; accent: string 
   'Troy Hunt':             { bg: '#1a0530', color: '#e9d5ff', accent: '#9333ea' },
 };
 
-function getSourceStyle(source: string) {
-  return SOURCE_STYLES[source] ?? { bg: '#0d1124', color: '#94a3b8', accent: '#475569' };
-}
-
-// ── Tag colors ─────────────────────────────────────────────
 const TAG_STYLES: Record<string, { bg: string; color: string; border: string }> = {
   'CVE':            { bg: 'rgba(239,68,68,0.12)',   color: '#fca5a5', border: 'rgba(239,68,68,0.4)' },
   'Zero-Day':       { bg: 'rgba(249,115,22,0.12)',  color: '#fdba74', border: 'rgba(249,115,22,0.4)' },
@@ -60,6 +54,10 @@ const TAG_STYLES: Record<string, { bg: string; color: string; border: string }> 
   'Privacy':        { bg: 'rgba(16,185,129,0.10)',  color: '#6ee7b7', border: 'rgba(16,185,129,0.3)' },
   'ICS/OT':         { bg: 'rgba(234,88,12,0.10)',   color: '#fdba74', border: 'rgba(234,88,12,0.3)' },
 };
+
+function getSourceStyle(source: string) {
+  return SOURCE_STYLES[source] ?? { bg: '#0d1124', color: '#94a3b8', accent: '#475569' };
+}
 
 function getTagStyle(tag: string) {
   return TAG_STYLES[tag] ?? { bg: 'rgba(71,85,105,0.15)', color: '#94a3b8', border: 'rgba(71,85,105,0.3)' };
@@ -100,7 +98,37 @@ function IconSearch() {
   );
 }
 
-export default function CyberWatch() {
+function IconBookmark({ filled }: { filled: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconSun() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
+function IconMoon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+export default function BriefSec() {
   const [data, setData] = useState<FeedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,6 +137,45 @@ export default function CyberWatch() {
   const [tagFilter, setTagFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [viewMode, setViewMode] = useState<'feed' | 'saved'>('feed');
+  const [timeFilter, setTimeFilter] = useState<'all' | '24h'>('all');
+  const [savedArticles, setSavedArticles] = useState<Map<string, NewsItem>>(new Map());
+
+  // Load persisted preferences from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('briefsec-theme') as 'dark' | 'light' | null;
+    if (savedTheme) setTheme(savedTheme);
+
+    const raw = localStorage.getItem('briefsec-saved');
+    if (raw) {
+      try {
+        const obj = JSON.parse(raw) as Record<string, NewsItem>;
+        setSavedArticles(new Map(Object.entries(obj)));
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  // Apply theme class to <html>
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light');
+    localStorage.setItem('briefsec-theme', theme);
+  }, [theme]);
+
+  const toggleSave = useCallback((item: NewsItem) => {
+    setSavedArticles(prev => {
+      const next = new Map(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else {
+        next.set(item.id, item);
+      }
+      const obj: Record<string, NewsItem> = {};
+      next.forEach((v, k) => { obj[k] = v; });
+      localStorage.setItem('briefsec-saved', JSON.stringify(obj));
+      return next;
+    });
+  }, []);
 
   const fetchNews = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -142,10 +209,20 @@ export default function CyberWatch() {
   }, [data]);
 
   const filteredItems = useMemo(() => {
+    if (viewMode === 'saved') {
+      return [...savedArticles.values()].sort(
+        (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
+      );
+    }
+
     if (!data) return [];
     let items = data.items;
     if (sourceFilter !== 'all') items = items.filter(i => i.source === sourceFilter);
     if (tagFilter !== 'all') items = items.filter(i => i.tags.includes(tagFilter));
+    if (timeFilter === '24h') {
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      items = items.filter(i => new Date(i.pubDate).getTime() > cutoff);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       items = items.filter(i =>
@@ -156,12 +233,14 @@ export default function CyberWatch() {
       );
     }
     return items;
-  }, [data, sourceFilter, tagFilter, search]);
+  }, [data, sourceFilter, tagFilter, search, timeFilter, viewMode, savedArticles]);
 
   const cveCount = useMemo(() => {
     if (!data) return 0;
     return data.items.filter(i => i.cves.length > 0).length;
   }, [data]);
+
+  const hasActiveFilters = sourceFilter !== 'all' || tagFilter !== 'all' || search || timeFilter !== 'all';
 
   return (
     <>
@@ -174,6 +253,13 @@ export default function CyberWatch() {
           <span className="header-subtitle">Security Intelligence Feed</span>
         </div>
         <div className="header-actions">
+          <button
+            className="btn btn-icon"
+            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <IconSun /> : <IconMoon />}
+          </button>
           <button
             className={`btn btn-refresh${refreshing ? ' spinning' : ''}`}
             onClick={() => fetchNews(true)}
@@ -194,6 +280,30 @@ export default function CyberWatch() {
 
       {/* ── Filter Bar ── */}
       <div className="filter-bar">
+        {/* Row 0: View tabs + time filter */}
+        <div className="filter-top-row">
+          <div className="view-tabs">
+            <button
+              className={`view-tab${viewMode === 'feed' ? ' active' : ''}`}
+              onClick={() => setViewMode('feed')}
+            >Feed</button>
+            <button
+              className={`view-tab${viewMode === 'saved' ? ' active' : ''}`}
+              onClick={() => setViewMode('saved')}
+            >Saved {savedArticles.size > 0 ? `(${savedArticles.size})` : ''}</button>
+          </div>
+          <div className="time-tabs">
+            <button
+              className={`view-tab${timeFilter === 'all' ? ' active' : ''}`}
+              onClick={() => setTimeFilter('all')}
+            >All time</button>
+            <button
+              className={`view-tab${timeFilter === '24h' ? ' active' : ''}`}
+              onClick={() => setTimeFilter('24h')}
+            >Last 24h</button>
+          </div>
+        </div>
+
         {/* Row 1: Sources */}
         <div className="filter-row">
           <span className="filter-label">Source</span>
@@ -235,7 +345,7 @@ export default function CyberWatch() {
           })}
         </div>
 
-        {/* Row 3: Search (full width on all screens) */}
+        {/* Row 3: Search */}
         <div className="search-row">
           <IconSearch />
           <input
@@ -248,23 +358,35 @@ export default function CyberWatch() {
       </div>
 
       {/* ── Stats Bar ── */}
-      {data && !loading && (
+      {(data || viewMode === 'saved') && !loading && (
         <div className="stats-bar">
-          <span><span className="stats-count">{filteredItems.length}</span> articles</span>
-          <span>·</span>
-          <span><span className="stats-count">{data.sources.length}</span> sources</span>
-          {cveCount > 0 && (
+          {viewMode === 'saved' ? (
+            <span><span className="stats-count">{savedArticles.size}</span> saved articles</span>
+          ) : (
             <>
+              <span><span className="stats-count">{filteredItems.length}</span> articles</span>
               <span>·</span>
-              <span><span className="stats-count" style={{ color: '#ef4444' }}>{cveCount}</span> with CVEs</span>
+              <span><span className="stats-count">{data?.sources.length ?? 0}</span> sources</span>
+              {cveCount > 0 && (
+                <>
+                  <span>·</span>
+                  <span><span className="stats-count" style={{ color: 'var(--red)' }}>{cveCount}</span> with CVEs</span>
+                </>
+              )}
+              <span className="live-dot">Live</span>
+              {data?.lastRefresh && (
+                <>
+                  <span>·</span>
+                  <span>Updated {timeAgo(data.lastRefresh)}</span>
+                </>
+              )}
             </>
           )}
-          <span className="live-dot">Live</span>
-          {(sourceFilter !== 'all' || tagFilter !== 'all' || search) && (
+          {hasActiveFilters && viewMode === 'feed' && (
             <button
               className="btn"
               style={{ padding: '2px 8px', fontSize: '10px' }}
-              onClick={() => { setSourceFilter('all'); setTagFilter('all'); setSearch(''); }}
+              onClick={() => { setSourceFilter('all'); setTagFilter('all'); setSearch(''); setTimeFilter('all'); }}
             >Clear filters</button>
           )}
         </div>
@@ -287,12 +409,23 @@ export default function CyberWatch() {
         </div>
       )}
 
-      {/* ── Empty ── */}
-      {!loading && !error && filteredItems.length === 0 && (
+      {/* ── Saved empty state ── */}
+      {!loading && !error && viewMode === 'saved' && savedArticles.size === 0 && (
+        <div className="empty-wrap" style={{ marginTop: 'calc(var(--header-h) + var(--filter-h))' }}>
+          <span style={{ fontSize: '24px' }}>🔖</span>
+          <span>No saved articles yet.</span>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Click the bookmark icon on any article to save it here.
+          </span>
+        </div>
+      )}
+
+      {/* ── Feed empty state ── */}
+      {!loading && !error && viewMode === 'feed' && filteredItems.length === 0 && data && (
         <div className="empty-wrap" style={{ marginTop: 'calc(var(--header-h) + var(--filter-h))' }}>
           <span style={{ fontSize: '24px' }}>🔍</span>
           <span>No articles match your filters.</span>
-          <button className="btn" onClick={() => { setSourceFilter('all'); setTagFilter('all'); setSearch(''); }}>
+          <button className="btn" onClick={() => { setSourceFilter('all'); setTagFilter('all'); setSearch(''); setTimeFilter('all'); }}>
             Clear filters
           </button>
         </div>
@@ -303,6 +436,7 @@ export default function CyberWatch() {
         <main className="news-grid">
           {filteredItems.map(item => {
             const srcStyle = getSourceStyle(item.source);
+            const isSaved = savedArticles.has(item.id);
             return (
               <article
                 key={item.id}
@@ -315,6 +449,13 @@ export default function CyberWatch() {
                   </span>
                   <div className="card-meta">
                     <span className="time-ago">{timeAgo(item.pubDate)}</span>
+                    <button
+                      className={`btn-save${isSaved ? ' saved' : ''}`}
+                      onClick={() => toggleSave(item)}
+                      title={isSaved ? 'Remove from saved' : 'Save article'}
+                    >
+                      <IconBookmark filled={isSaved} />
+                    </button>
                     <a className="read-link" href={item.link} target="_blank" rel="noopener noreferrer">
                       Read ↗
                     </a>

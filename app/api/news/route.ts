@@ -92,7 +92,7 @@ function extractCVEs(text: string): string[] {
 
 function openDb() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Database = require('better-sqlite3');
     const dbPath = path.join(process.cwd(), 'db', 'cyberwatch.sqlite');
     const db = new Database(dbPath);

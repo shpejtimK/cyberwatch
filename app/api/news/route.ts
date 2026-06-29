@@ -181,7 +181,7 @@ async function refreshDatabase(): Promise<void> {
 
       try {
         upsert.run(guid, feedName, title, link, description,
-          (item as Record<string, unknown>)['creator'] as string || item.author || '',
+          (item as Record<string, unknown>)['creator'] as string || (item as Record<string, unknown>)['author'] as string || '',
           pubDate, publishedAt, JSON.stringify(tags), JSON.stringify(cves), contentHash);
       } catch { /* skip */ }
     }

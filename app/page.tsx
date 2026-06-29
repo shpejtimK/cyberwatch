@@ -175,7 +175,7 @@ export default function CyberWatch() {
       <header className="header">
         <div className="header-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.svg" alt="CyberWatch logo" width={28} height={28} style={{ borderRadius: '5px', flexShrink: 0 }} />
+          <img src="/favicon.svg" alt="CyberWatch logo" width={28} height={28} style={{ borderRadius: '5px', flexShrink: 0 }} />
           <div className="header-logo">Cyber<span>Watch</span></div>
           <span className="header-subtitle">Security Intelligence Feed</span>
         </div>

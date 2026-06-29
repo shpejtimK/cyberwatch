@@ -33,6 +33,9 @@ const RSS_FEEDS = [
   { url: 'https://www.darkreading.com/rss.xml', name: 'Dark Reading' },
 ];
 
+// When CRON_MODE=true (set in Railway cron service), the API only reads — never refreshes inline.
+// The separate cron job (npm run worker:rss) handles all RSS fetching.
+const CRON_MODE = process.env.CRON_MODE === 'true';
 const STALE_AFTER_MS = 15 * 60 * 1000; // 15 minutes
 
 const parser = new Parser({
@@ -238,8 +241,9 @@ export async function GET() {
 
   const isStale = Date.now() - lastRefresh > STALE_AFTER_MS;
 
-  if (isStale) {
-    // Deduplicate concurrent requests — only one refresh at a time
+  // In CRON_MODE the worker process handles refreshes — API only reads.
+  // Without CRON_MODE (default), self-refresh on stale data so it works out of the box.
+  if (isStale && !CRON_MODE) {
     if (!refreshPromise) {
       refreshPromise = refreshDatabase().finally(() => { refreshPromise = null; });
     }
@@ -247,10 +251,22 @@ export async function GET() {
   }
 
   const items = readFromDb();
+
+  const headers = {
+    // CDN/proxy caches the response for 5 min; browser revalidates but uses cached version
+    'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900',
+  };
+
   if (items && items.length > 0) {
     const sources = [...new Set(items.map(i => i.source))];
-    return NextResponse.json({ items, sources, total: items.length, fromCache: !isStale, lastRefresh: new Date(lastRefresh).toISOString() });
+    return NextResponse.json(
+      { items, sources, total: items.length, fromCache: !isStale, lastRefresh: new Date(lastRefresh).toISOString() },
+      { headers }
+    );
   }
 
-  return NextResponse.json({ items: [], sources: [], total: 0, fromCache: false, lastRefresh: null });
+  return NextResponse.json(
+    { items: [], sources: [], total: 0, fromCache: false, lastRefresh: null },
+    { headers }
+  );
 }

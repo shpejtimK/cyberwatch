@@ -7,7 +7,6 @@ interface NewsItem {
   title: string;
   link: string;
   description: string;
-  content: string;
   pubDate: string;
   source: string;
   tags: string[];
@@ -142,7 +141,6 @@ export default function BriefSec() {
   const [viewMode, setViewMode] = useState<'feed' | 'saved'>('feed');
   const [timeFilter, setTimeFilter] = useState<'all' | '24h'>('all');
   const [savedArticles, setSavedArticles] = useState<Map<string, NewsItem>>(new Map());
-  const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
 
   // Load persisted preferences from localStorage
   useEffect(() => {
@@ -197,11 +195,6 @@ export default function BriefSec() {
 
   useEffect(() => { fetchNews(); }, [fetchNews]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedArticle(null); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
 
 
   useEffect(() => {
@@ -472,7 +465,7 @@ export default function BriefSec() {
                 </div>
 
                 <h2 className="card-title">
-                  <button onClick={() => setSelectedArticle(item)}>{item.title}</button>
+                  <a href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</a>
                 </h2>
 
                 {item.cves.length > 0 && (
@@ -508,62 +501,6 @@ export default function BriefSec() {
         </main>
       )}
       {/* ── Article Modal ── */}
-      {selectedArticle && (() => {
-        const item = selectedArticle;
-        const srcStyle = getSourceStyle(item.source);
-        return (
-          <div className="modal-overlay" onClick={() => setSelectedArticle(null)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <div className="modal-meta">
-                  <span className="source-badge" style={{ background: srcStyle.bg, color: srcStyle.color }}>
-                    {item.source}
-                  </span>
-                  <span className="time-ago">{timeAgo(item.pubDate)}</span>
-                </div>
-                <button className="modal-close" onClick={() => setSelectedArticle(null)}>×</button>
-              </div>
-
-              <h2 className="modal-title">{item.title}</h2>
-
-              {item.cves.length > 0 && (
-                <div className="cve-badges" style={{ padding: '10px 20px 0' }}>
-                  {item.cves.map(cve => (
-                    <span key={cve} className="cve-badge">{cve}</span>
-                  ))}
-                </div>
-              )}
-
-              {(item.content || item.description) && (
-                <div className="modal-body">
-                  <p style={{ margin: 0, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{item.content || item.description}</p>
-                </div>
-              )}
-
-              {item.tags.length > 0 && (
-                <div className="modal-tags">
-                  {item.tags.map(tag => {
-                    const ts = getTagStyle(tag);
-                    return (
-                      <span key={tag} className="tag"
-                        style={{ background: ts.bg, color: ts.color, borderColor: ts.border }}>
-                        {tag}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="modal-footer">
-                <button className="btn" onClick={() => setSelectedArticle(null)}>Close</button>
-                <a className="btn-primary" href={item.link} target="_blank" rel="noopener noreferrer">
-                  Read full article ↗
-                </a>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </>
   );
 }

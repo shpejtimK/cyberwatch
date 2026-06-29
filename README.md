@@ -1,4 +1,4 @@
-# CyberWatch
+# BriefSec
 
 A personal cybersecurity news dashboard that aggregates the most trusted security sources into a single, fast, always-fresh feed. Built for daily use by security analysts and anyone who needs to stay current with vulnerabilities, breaches, malware, and threat intelligence.
 
@@ -50,7 +50,7 @@ A personal cybersecurity news dashboard that aggregates the most trusted securit
 ### Install and run
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cyberwatch.git
+git clone https://github.com/shpejtimK/cyberwatch.git
 cd cyberwatch
 npm install
 npm run dev
@@ -62,23 +62,16 @@ On first load the app fetches all 12 feeds live (takes ~5–10 seconds). After t
 
 ### Optional: pre-populate the database
 
-If you want the DB populated before opening the browser (useful for production):
-
 ```bash
-npm run worker:rss
-```
-
-To keep it running in the background and refresh every 15 minutes:
-
-```bash
-npm run worker:rss:watch
+npm run worker:rss        # fetch once
+npm run worker:rss:watch  # fetch every 15 min continuously
 ```
 
 ### Production
 
 ```bash
 npm run build
-npm start          # runs on port 63337
+npm start
 ```
 
 ## How the auto-refresh works
@@ -98,7 +91,7 @@ Browser → GET /api/news
 ## Project structure
 
 ```
-cyberwatch/
+briefsec/
 ├── app/
 │   ├── api/news/route.ts   # RSS fetch, SQLite read/write, auto-refresh logic
 │   ├── page.tsx            # Main dashboard UI (filters, search, cards)
@@ -107,7 +100,7 @@ cyberwatch/
 ├── scripts/
 │   └── rss-worker.js       # Standalone ingestion script (optional)
 ├── db/
-│   └── cyberwatch.sqlite   # Auto-created on first run (gitignored)
+│   └── briefsec.sqlite     # Auto-created on first run (gitignored)
 └── package.json
 ```
 

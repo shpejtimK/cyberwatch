@@ -2,12 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'CyberWatch — Security Intelligence Feed',
+  title: 'BriefSec — Security Intelligence Feed',
   description: 'Real-time cybersecurity news aggregator for security analysts',
   icons: {
-    icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-    ],
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
     shortcut: '/favicon.svg',
   },
 };
